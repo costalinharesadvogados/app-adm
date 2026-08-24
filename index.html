@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Meu Dia a Dia</title>
+<meta name="description" content="App simples para acompanhar contas pagas e a pagar, tarefas e horários de remédios, com letra grande.">
+<meta name="theme-color" content="#0b57a4">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Meu Dia a Dia">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icones/icone-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icones/icone-512.png">
+<link rel="apple-touch-icon" href="icones/apple-touch-icon.png">
+<style>
+:root{
+  font-size:18px;
+  --tinta:#14213d; --fraca:#5b6b8a; --linha:#d8dfec;
+  --fundo:#f4f6fb; --papel:#ffffff;
+  --verde:#137a3d; --verde-claro:#e3f5e9;
+  --vermelho:#b3261e; --vermelho-claro:#fdeceb;
+  --laranja:#a35a00; --laranja-claro:#fff2e0;
+  --azul:#0b57a4; --azul-claro:#e6f0fb;
+}
+html.g1{font-size:20.5px;} html.g2{font-size:23px;}
+html.g1 .resumo,html.g2 .resumo{grid-template-columns:1fr;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;height:100%;}
+body{
+  font-family:"Segoe UI",system-ui,Arial,sans-serif;
+  background:var(--fundo);color:var(--tinta);
+  font-size:1rem;line-height:1.4;overflow:hidden;
+  -webkit-text-size-adjust:100%;
+}
+#app{position:fixed;inset:0;display:flex;flex-direction:column;}
+
+/* ---------- cabeçalho ---------- */
+header{
+  flex:0 0 auto;background:var(--azul);color:#fff;
+  padding:calc(0.7rem + env(safe-area-inset-top)) calc(0.8rem + env(safe-area-inset-right)) 0.7rem calc(0.8rem + env(safe-area-inset-left));
+  display:flex;align-items:center;gap:0.6rem;
+}
+header h1{margin:0;font-size:1.45rem;flex:1;line-height:1.1;}
+.letra-bt{
+  background:rgba(255,255,255,.2);color:#fff;border:2px solid rgba(255,255,255,.6);
+  border-radius:0.7rem;min-height:2.9rem;min-width:3.4rem;font-size:1.1rem;font-weight:bold;
+  font-family:inherit;cursor:pointer;touch-action:manipulation;
+}
+
+/* ---------- conteúdo ---------- */
+main{flex:1 1 auto;overflow-y:auto;padding:0.8rem 0.8rem 1.4rem;
+  padding-left:calc(0.8rem + env(safe-area-inset-left));padding-right:calc(0.8rem + env(safe-area-inset-right));}
+.aba{display:none;} .aba.ativa{display:block;}
+
+/* ---------- barra de meses ---------- */
+.meses{
+  display:flex;align-items:center;gap:0.5rem;background:var(--papel);
+  border:2px solid var(--linha);border-radius:1rem;padding:0.4rem;margin-bottom:0.8rem;
+}
+.meses button{
+  min-width:3.4rem;min-height:3.2rem;font-size:1.6rem;font-weight:bold;
+  background:var(--azul-claro);color:var(--azul);border:none;border-radius:0.8rem;
+  font-family:inherit;cursor:pointer;touch-action:manipulation;
+}
+.meses .nome{flex:1;text-align:center;font-size:1.25rem;font-weight:bold;}
+
+/* ---------- resumo ---------- */
+.resumo{display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;margin-bottom:0.9rem;}
+.bloco{border-radius:1rem;padding:0.75rem;border:2px solid;}
+.bloco .rot{font-size:0.95rem;font-weight:bold;margin-bottom:0.15rem;}
+.bloco .val{font-size:1.25rem;font-weight:bold;line-height:1.15;overflow-wrap:break-word;}
+.bloco .qtd{font-size:0.95rem;font-weight:bold;margin-top:0.15rem;opacity:.85;}
+.bloco.falta{background:var(--vermelho-claro);border-color:var(--vermelho);color:var(--vermelho);}
+.bloco.pago{background:var(--verde-claro);border-color:var(--verde);color:var(--verde);}
+
+/* ---------- itens ---------- */
+.item{
+  background:var(--papel);border:2px solid var(--linha);border-radius:1rem;
+  padding:0.7rem;margin-bottom:0.7rem;display:flex;align-items:center;gap:0.5rem;
+}
+.item.ok{background:var(--verde-claro);border-color:var(--verde);}
+.item.atrasada{border-color:var(--vermelho);border-width:3px;}
+.item .txt{flex:1;min-width:0;}
+.item .nome{font-size:1.2rem;font-weight:bold;line-height:1.2;overflow-wrap:break-word;word-break:normal;hyphens:none;}
+.item .sub{font-size:1rem;color:var(--fraca);margin-top:0.15rem;}
+.item.ok .sub{color:var(--verde);}
+.item .valor{font-size:1.3rem;font-weight:bold;white-space:nowrap;}
+.marca{
+  min-width:5.1rem;min-height:3.6rem;border-radius:0.9rem;border:none;
+  font-family:inherit;font-size:1.05rem;font-weight:bold;cursor:pointer;
+  touch-action:manipulation;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  line-height:1.05;gap:0.1rem;
+}
+.marca .ic{font-size:1.4rem;}
+.marca.nao{background:var(--vermelho);color:#fff;}
+.marca.sim{background:var(--verde);color:#fff;}
+.selo{
+  font-size:0.9rem;font-weight:bold;border-radius:0.5rem;padding:0.15rem 0.5rem;
+  display:inline-block;margin-top:0.25rem;
+}
+.selo.atraso{background:var(--vermelho);color:#fff;}
+.selo.hoje{background:var(--laranja);color:#fff;}
+.editar{
+  background:var(--azul-claro);color:var(--azul);border:none;border-radius:0.8rem;
+  min-width:3.4rem;min-height:3.6rem;font-size:1.2rem;font-family:inherit;cursor:pointer;
+  touch-action:manipulation;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:0.05rem;line-height:1;flex:0 0 auto;
+}
+.editar small{font-size:0.7rem;font-weight:bold;}
+
+/* ---------- botões grandes ---------- */
+.bt-grande{
+  width:100%;min-height:4rem;border-radius:1rem;border:none;background:var(--azul);color:#fff;
+  font-family:inherit;font-size:1.2rem;font-weight:bold;cursor:pointer;touch-action:manipulation;
+  display:flex;align-items:center;justify-content:center;gap:0.5rem;margin-top:0.4rem;
+}
+.bt-grande.verde{background:var(--verde);}
+.bt-grande.cinza{background:#5b6b8a;}
+.bt-grande.vermelho{background:var(--vermelho);}
+.bt-grande.contorno{background:var(--papel);color:var(--azul);border:3px solid var(--azul);}
+.bt-grande:active{filter:brightness(.92);}
+
+/* ---------- títulos de seção ---------- */
+h2.sec{font-size:1.25rem;margin:1.2rem 0 0.6rem;display:flex;align-items:center;gap:0.4rem;}
+.vazio{
+  background:var(--papel);border:2px dashed var(--linha);border-radius:1rem;
+  padding:1.2rem;text-align:center;color:var(--fraca);font-size:1.05rem;
+}
+
+/* ---------- remédios ---------- */
+.agora{
+  background:var(--laranja-claro);border:3px solid var(--laranja);border-radius:1rem;
+  padding:0.8rem;margin-bottom:0.9rem;
+}
+.agora .rot{font-size:1rem;font-weight:bold;color:var(--laranja);}
+.agora .prox{font-size:1.35rem;font-weight:bold;margin-top:0.2rem;}
+.hora{
+  font-size:1.25rem;font-weight:bold;background:var(--azul-claro);color:var(--azul);
+  border-radius:0.7rem;padding:0.35rem 0.4rem;min-width:4rem;text-align:center;flex:0 0 auto;
+}
+.item.ok .hora{background:#cdebd8;color:var(--verde);}
+.item.dose,.item.largo{flex-direction:column;align-items:stretch;gap:0.55rem;}
+.item.largo .acoes{display:flex;gap:0.5rem;}
+.item.largo .acoes .marca{flex:1;flex-direction:row;gap:0.5rem;min-height:3.4rem;}
+.item.dose .topo-dose{display:flex;align-items:center;gap:0.6rem;}
+.marca.larga{width:100%;flex-direction:row;gap:0.5rem;min-height:3.4rem;font-size:1.15rem;}
+
+/* ---------- abas de baixo ---------- */
+nav{
+  flex:0 0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:2px;
+  background:var(--linha);border-top:2px solid var(--linha);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+nav button{
+  background:var(--papel);border:none;font-family:inherit;cursor:pointer;touch-action:manipulation;
+  padding:0.5rem 0.2rem;min-height:4.2rem;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:0.15rem;color:var(--fraca);font-size:0.95rem;font-weight:bold;
+}
+nav button .ic{font-size:1.6rem;line-height:1;}
+nav button.ativa{background:var(--azul-claro);color:var(--azul);box-shadow:inset 0 -5px 0 var(--azul);}
+
+/* ---------- caixa de diálogo ---------- */
+#tela-modal{
+  position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;display:none;
+  align-items:flex-end;justify-content:center;
+}
+#tela-modal.ativa{display:flex;}
+.folha{
+  background:var(--papel);width:100%;max-width:560px;border-radius:1.4rem 1.4rem 0 0;
+  padding:1.1rem 1rem calc(1.1rem + env(safe-area-inset-bottom));
+  max-height:92vh;overflow-y:auto;
+}
+.folha h3{margin:0 0 0.8rem;font-size:1.4rem;}
+label{display:block;font-size:1.05rem;font-weight:bold;margin:0.7rem 0 0.3rem;}
+input,select{
+  width:100%;font-family:inherit;font-size:1.25rem;padding:0.7rem;
+  border:2px solid var(--linha);border-radius:0.8rem;background:#fff;color:var(--tinta);
+  min-height:3.6rem;
+}
+input:focus,select:focus{outline:3px solid var(--azul);border-color:var(--azul);}
+.horarios{display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.4rem;}
+.chip{
+  background:var(--azul-claro);color:var(--azul);border:2px solid var(--azul);
+  border-radius:0.7rem;padding:0.5rem 0.7rem;font-size:1.1rem;font-weight:bold;
+  font-family:inherit;cursor:pointer;min-height:3rem;touch-action:manipulation;
+}
+.chip .x{margin-left:0.4rem;}
+.aviso{
+  background:var(--laranja-claro);border:2px solid var(--laranja);color:var(--laranja);
+  border-radius:0.8rem;padding:0.6rem 0.8rem;font-size:1rem;margin-top:0.6rem;
+}
+#recado{
+  position:fixed;left:50%;bottom:5.2rem;transform:translateX(-50%) translateY(0.5rem);
+  background:var(--tinta);color:#fff;padding:0.6rem 1rem;border-radius:1rem;
+  font-size:1rem;font-weight:bold;opacity:0;pointer-events:none;transition:.2s;z-index:60;
+  max-width:90%;text-align:center;
+}
+#recado.on{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div style="flex:1;min-width:0"><h1 id="titulo">Contas do mês</h1><div id="hoje-txt" style="font-size:0.9rem;opacity:.9"></div></div>
+    <button class="letra-bt" id="b-letra" aria-label="Aumentar o tamanho da letra">A+</button>
+  </header>
+
+  <main>
+    <!-- ============ CONTAS ============ -->
+    <section class="aba ativa" id="aba-contas">
+      <div class="meses">
+        <button id="mes-ant" aria-label="Mês anterior">‹</button>
+        <div class="nome" id="mes-nome">agosto de 2026</div>
+        <button id="mes-prox" aria-label="Próximo mês">›</button>
+      </div>
+      <div class="resumo">
+        <div class="bloco falta"><div class="rot">Falta pagar</div><div class="val" id="v-falta">R$ 0,00</div><div class="qtd" id="q-falta"></div></div>
+        <div class="bloco pago"><div class="rot">Já pago</div><div class="val" id="v-pago">R$ 0,00</div><div class="qtd" id="q-pago"></div></div>
+      </div>
+      <div id="lista-contas"></div>
+      <button class="bt-grande" id="b-nova-conta">➕ Nova conta</button>
+      <button class="bt-grande contorno" id="b-copia" style="margin-top:1.2rem">💾 Cópia de segurança</button>
+      <button class="bt-grande contorno" id="b-instalar" style="display:none">📲 Instalar no celular</button>
+    </section>
+
+    <!-- ============ TAREFAS ============ -->
+    <section class="aba" id="aba-tarefas">
+      <div id="lista-tarefas"></div>
+      <button class="bt-grande" id="b-nova-tarefa">➕ Nova tarefa</button>
+      <h2 class="sec" id="tt-feitas" style="display:none">✅ Já feitas</h2>
+      <div id="lista-feitas"></div>
+    </section>
+
+    <!-- ============ REMÉDIOS ============ -->
+    <section class="aba" id="aba-remedios">
+      <div class="agora" id="caixa-proximo" style="display:none">
+        <div class="rot">PRÓXIMO REMÉDIO</div>
+        <div class="prox" id="txt-proximo"></div>
+      </div>
+      <h2 class="sec">💊 Para tomar hoje</h2>
+      <div id="lista-doses"></div>
+      <h2 class="sec">📋 Meus remédios</h2>
+      <div id="lista-remedios"></div>
+      <button class="bt-grande" id="b-novo-remedio">➕ Novo remédio</button>
+      <button class="bt-grande contorno" id="b-alarme">🔔 Ligar o aviso na hora</button>
+    </section>
+  </main>
+
+  <nav>
+    <button class="ativa" data-aba="contas"><span class="ic">💰</span> Contas</button>
+    <button data-aba="tarefas"><span class="ic">✅</span> Tarefas</button>
+    <button data-aba="remedios"><span class="ic">💊</span> Remédios</button>
+  </nav>
+</div>
+
+<div id="tela-modal"><div class="folha" id="folha"></div></div>
+<div id="recado"></div>
+<script>
+"use strict";
+/* ==========================================================
+   MEU DIA A DIA — contas, tarefas e remédios
+   Tudo fica guardado no próprio aparelho.
+   ========================================================== */
+
+var CHAVE='meu-dia-a-dia-v1';
+
+/* contas iniciais, tiradas da lista do usuário (todas editáveis) */
+function contasIniciais(){
+  return [
+    {id:'c1', nome:'Aluguel 106 T2',        valor:3058.50, dia:5,  mes:null},
+    {id:'c2', nome:'AJUDA',                 valor:1000.00, dia:5,  mes:null},
+    {id:'c3', nome:'Telefone VIVO',         valor:100.00,  dia:9,  mes:null},
+    {id:'c4', nome:'Condomínio PDD',        valor:797.93,  dia:10, mes:null},
+    {id:'c5', nome:'Condomínio 106 T2',     valor:763.01,  dia:10, mes:null},
+    {id:'c6', nome:'Internet ap 106 T2',    valor:99.90,   dia:10, mes:null},
+    {id:'c7', nome:'Consórcio Moto',        valor:0,       dia:17, mes:null},
+    {id:'c8', nome:'Internet 4R',           valor:105.00,  dia:20, mes:null}
+  ];
+}
+var D = {
+  contas:contasIniciais(), pagos:{}, tarefas:[], remedios:[], tomados:{},
+  letra:0, alarme:false
+};
+var mesAtual=null;   /* 'aaaa-mm' mostrado na tela */
+
+/* ---------------- guardar e ler no aparelho ---------------- */
+function guardar(){
+  try{ localStorage.setItem(CHAVE, JSON.stringify(D)); }
+  catch(e){ /* modo privado: o app segue funcionando na sessão */ }
+}
+function carregar(){
+  try{
+    var t=localStorage.getItem(CHAVE);
+    if(!t) return false;
+    var x=JSON.parse(t);
+    if(x && typeof x==='object'){
+      D.contas   = x.contas   || D.contas;
+      D.pagos    = x.pagos    || {};
+      D.tarefas  = x.tarefas  || [];
+      D.remedios = x.remedios || [];
+      D.tomados  = x.tomados  || {};
+      D.letra    = x.letra    || 0;
+      D.alarme   = !!x.alarme;
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+
+/* ---------------- utilidades ---------------- */
+function $(id){ return document.getElementById(id); }
+function idNovo(){ return 'x'+Date.now().toString(36)+Math.floor(Math.random()*1000).toString(36); }
+function dinheiro(v){
+  return 'R$\u00a0' + (Number(v)||0).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+}
+var MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+function hoje(){ return new Date(); }
+function chaveMes(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function chaveDia(d){ return chaveMes(d)+'-'+String(d.getDate()).padStart(2,'0'); }
+function nomeMes(chave){
+  var p=chave.split('-'); return MESES[parseInt(p[1],10)-1]+' de '+p[0];
+}
+function ddmm(iso){
+  if(!iso) return '';
+  var p=iso.split('-'); return p[2]+'/'+p[1];
+}
+function recado(txt){
+  var r=$('recado'); r.textContent=txt; r.classList.add('on');
+  clearTimeout(recado.t); recado.t=setTimeout(function(){ r.classList.remove('on'); }, 1900);
+}
+
+/* ---------------- caixa de diálogo ---------------- */
+function abrirFolha(html){
+  $('folha').innerHTML=html;
+  $('tela-modal').classList.add('ativa');
+}
+function fecharFolha(){ $('tela-modal').classList.remove('ativa'); }
+$('tela-modal').addEventListener('click', function(e){ if(e.target===$('tela-modal')) fecharFolha(); });
+
+function perguntar(titulo, texto, txtSim, aoSim, perigo){
+  abrirFolha(
+    '<h3>'+titulo+'</h3><p style="font-size:1.15rem;margin:0 0 0.4rem">'+texto+'</p>'+
+    '<button class="bt-grande '+(perigo?'vermelho':'verde')+'" id="f-sim">'+txtSim+'</button>'+
+    '<button class="bt-grande cinza" id="f-nao">Não, voltar</button>'
+  );
+  $('f-sim').addEventListener('click', function(){ fecharFolha(); aoSim(); });
+  $('f-nao').addEventListener('click', fecharFolha);
+}
+
+/* ---------------- tamanho da letra ---------------- */
+function aplicarLetra(){
+  document.documentElement.className = D.letra===1?'g1':(D.letra===2?'g2':'');
+  $('b-letra').textContent = D.letra===2 ? 'A−' : 'A+';
+}
+$('b-letra').addEventListener('click', function(){
+  D.letra = (D.letra+1)%3;
+  aplicarLetra(); guardar();
+  recado(D.letra===0?'Letra normal':(D.letra===1?'Letra maior':'Letra bem maior'));
+});
+
+/* ================= CONTAS ================= */
+function contasDoMes(mes){
+  return D.contas.filter(function(c){
+    if(c.mes!==null && c.mes!==mes) return false;
+    /* conta encerrada só continua aparecendo nos meses em que já foi paga */
+    if(c.encerrada && !pagamento(mes,c.id)) return false;
+    return true;
+  }).sort(function(a,b){ return a.dia-b.dia || a.nome.localeCompare(b.nome); });
+}
+function pagamento(mes, id){
+  return (D.pagos[mes]||{})[id] || null;
+}
+function situacao(c, mes){
+  var p=pagamento(mes,c.id);
+  if(p) return {pago:true};
+  var h=hoje(), mesHoje=chaveMes(h);
+  if(mes < mesHoje) return {pago:false, atraso:true};
+  if(mes > mesHoje) return {pago:false};
+  if(c.dia < h.getDate()) return {pago:false, atraso:true};
+  if(c.dia === h.getDate()) return {pago:false, hoje:true};
+  return {pago:false};
+}
+function pintarContas(){
+  $('mes-nome').textContent = nomeMes(mesAtual);
+  var lista=$('lista-contas'); lista.innerHTML='';
+  var itens=contasDoMes(mesAtual), falta=0, pago=0;
+
+  if(!itens.length){
+    lista.innerHTML='<div class="vazio">Nenhuma conta neste mês.<br>Toque em <b>Nova conta</b> para começar.</div>';
+  }
+  itens.forEach(function(c){
+    var s=situacao(c,mesAtual), p=pagamento(mesAtual,c.id);
+    if(s.pago) pago += Number(c.valor)||0; else falta += Number(c.valor)||0;
+
+    var div=document.createElement('div');
+    div.className='item'+(s.pago?' ok':'')+(s.atraso?' atrasada':'')+(c.nome.length>24?' largo':'');
+
+    var txt=document.createElement('div'); txt.className='txt';
+    var sub = s.pago
+      ? ('Pago em '+ddmm(p.quando) + (p.obs?' · '+p.obs:''))
+      : ('Vence dia '+c.dia);
+    var selo = s.atraso ? '<div><span class="selo atraso">ATRASADA</span></div>'
+             : (s.hoje ? '<div><span class="selo hoje">VENCE HOJE</span></div>' : '');
+    txt.innerHTML='<div class="nome">'+escapar(c.nome)+'</div>'+
+                  (Number(c.valor)>0?'<div class="valor">'+dinheiro(c.valor)+'</div>':'<div class="sub">sem valor fixo</div>')+
+                  '<div class="sub">'+escapar(sub)+'</div>'+selo;
+    div.appendChild(txt);
+
+    var bt=document.createElement('button');
+    bt.className='marca '+(s.pago?'sim':'nao');
+    bt.innerHTML = s.pago ? '<span class="ic">✔</span>PAGO' : '<span class="ic">💵</span>PAGAR';
+    bt.setAttribute('aria-label', (s.pago?'Já pago: ':'Marcar como pago: ')+c.nome);
+    bt.addEventListener('click', function(){ trocarPagamento(c); });
+
+    var ed=document.createElement('button');
+    ed.className='editar'; ed.innerHTML='✎<small>Alterar</small>';
+    ed.setAttribute('aria-label','Alterar a conta '+c.nome);
+    ed.addEventListener('click', function(){ formConta(c); });
+
+    if(c.nome.length>24){
+      var acoes=document.createElement('div'); acoes.className='acoes';
+      acoes.appendChild(bt); acoes.appendChild(ed);
+      div.appendChild(acoes);
+    } else {
+      div.appendChild(bt); div.appendChild(ed);
+    }
+    lista.appendChild(div);
+  });
+  var nFalta=0,nPago=0;
+  itens.forEach(function(c){ if(situacao(c,mesAtual).pago) nPago++; else nFalta++; });
+  $('v-falta').textContent=dinheiro(falta);
+  $('v-pago').textContent=dinheiro(pago);
+  $('q-falta').textContent = nFalta===1?'1 conta':(nFalta+' contas');
+  $('q-pago').textContent  = nPago===1 ?'1 conta':(nPago+' contas');
+}
+function escapar(t){
+  return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function trocarPagamento(c){
+  var p=pagamento(mesAtual,c.id);
+  if(p){
+    perguntar('Desmarcar?', 'A conta <b>'+escapar(c.nome)+'</b> volta para "falta pagar".',
+      'Sim, desmarcar', function(){
+        delete D.pagos[mesAtual][c.id];
+        guardar(); pintarContas(); recado('Desmarcada');
+      }, true);
+    return;
+  }
+  if(!D.pagos[mesAtual]) D.pagos[mesAtual]={};
+  D.pagos[mesAtual][c.id]={quando:chaveDia(hoje()), obs:''};
+  guardar(); pintarContas();
+  anotarPagamento(c);
+}
+
+/* pergunta rápida e opcional: onde foi pago */
+var LUGARES=['BB','C6','Santander','Pix','Dinheiro','Cartão','Débito automático'];
+function anotarPagamento(c){
+  var p=pagamento(mesAtual,c.id); if(!p) return;
+  abrirFolha(
+    '<h3>✔ '+escapar(c.nome)+' foi paga</h3>'+
+    '<p style="font-size:1.1rem;margin:0 0 0.2rem">Quer anotar onde pagou? (não é obrigatório)</p>'+
+    '<div class="horarios" id="f-lugares"></div>'+
+    '<label for="f-obs2">Ou escreva do seu jeito</label>'+
+    '<input id="f-obs2" type="text" value="" placeholder="Ex.: pago BB dia 04">'+
+    '<button class="bt-grande verde" id="f-ok">💾 Salvar anotação</button>'+
+    '<button class="bt-grande cinza" id="f-pular">Não precisa anotar</button>'
+  );
+  var box=$('f-lugares');
+  LUGARES.forEach(function(L){
+    var b=document.createElement('button'); b.className='chip'; b.textContent=L;
+    b.addEventListener('click', function(){
+      var campo=$('f-obs2');
+      campo.value = campo.value ? (campo.value+' '+L) : ('pago '+L);
+    });
+    box.appendChild(b);
+  });
+  $('f-ok').addEventListener('click', function(){
+    p.obs=$('f-obs2').value.trim();
+    guardar(); fecharFolha(); pintarContas(); recado('Anotado');
+  });
+  $('f-pular').addEventListener('click', function(){ fecharFolha(); recado('✔ Conta marcada como paga'); });
+}
+
+/* ---- formulário de conta ---- */
+function formConta(c){
+  var novo=!c;
+  c = c || {id:idNovo(), nome:'', valor:'', dia:hoje().getDate(), mes:null};
+  var p = novo?null:pagamento(mesAtual,c.id);
+  abrirFolha(
+    '<h3>'+(novo?'Nova conta':'Alterar conta')+'</h3>'+
+    '<label for="f-nome">Nome da conta</label>'+
+    '<input id="f-nome" type="text" value="'+escapar(c.nome)+'" placeholder="Ex.: Conta de luz">'+
+    '<label for="f-valor">Valor em reais</label>'+
+    '<input id="f-valor" type="text" inputmode="decimal" value="'+(c.valor?String(c.valor).replace('.',','):'')+'" placeholder="Ex.: 150,00">'+
+    '<label for="f-dia">Dia do vencimento</label>'+
+    '<select id="f-dia">'+diasOpcoes(c.dia)+'</select>'+
+    (novo?'':'<label for="f-encerrada">Esta conta ainda existe?</label>'+
+      '<select id="f-encerrada">'+
+        '<option value="sim"'+(c.encerrada?'':' selected')+'>Sim, continuar cobrando</option>'+
+        '<option value="nao"'+(c.encerrada?' selected':'')+'>Não, já acabou (guardar histórico)</option>'+
+      '</select>')+
+    '<label for="f-tipo">Repete todo mês?</label>'+
+    '<select id="f-tipo">'+
+      '<option value="mensal"'+(c.mes===null?' selected':'')+'>Sim, todo mês</option>'+
+      '<option value="unica"'+(c.mes!==null?' selected':'')+'>Não, só neste mês</option>'+
+    '</select>'+
+    (p?('<label for="f-obs">Anotação do pagamento</label>'+
+        '<input id="f-obs" type="text" value="'+escapar(p.obs||'')+'" placeholder="Ex.: pago BB">'+
+        '<label for="f-quando">Data em que pagou</label>'+
+        '<input id="f-quando" type="date" value="'+(p.quando||'')+'">'):'')+
+    '<button class="bt-grande verde" id="f-salvar">💾 Salvar</button>'+
+    (novo?'':'<button class="bt-grande vermelho" id="f-apagar">🗑️ Apagar esta conta</button>')+
+    '<button class="bt-grande cinza" id="f-cancelar">Cancelar</button>'
+  );
+  $('f-salvar').addEventListener('click', function(){
+    var nome=$('f-nome').value.trim();
+    if(!nome){ recado('Escreva o nome da conta'); $('f-nome').focus(); return; }
+    var bruto=$('f-valor').value.trim().replace(/\./g,'').replace(',','.');
+    var valor=parseFloat(bruto); if(isNaN(valor)||valor<0) valor=0;
+    c.nome=nome; c.valor=valor; c.dia=parseInt($('f-dia').value,10);
+    c.mes = $('f-tipo').value==='mensal' ? null : mesAtual;
+    if(!novo && $('f-encerrada')) c.encerrada = ($('f-encerrada').value==='nao');
+    if(p){
+      p.obs=$('f-obs').value.trim();
+      if($('f-quando').value) p.quando=$('f-quando').value;
+    }
+    if(novo) D.contas.push(c);
+    guardar(); fecharFolha(); pintarContas();
+    recado(novo?'Conta criada':'Conta alterada');
+  });
+  if(!novo) $('f-apagar').addEventListener('click', function(){
+    fecharFolha();
+    perguntar('Apagar a conta?', 'A conta <b>'+escapar(c.nome)+'</b> vai sumir de todos os meses.',
+      'Sim, apagar', function(){
+        D.contas = D.contas.filter(function(x){ return x.id!==c.id; });
+        Object.keys(D.pagos).forEach(function(m){ delete D.pagos[m][c.id]; });
+        guardar(); pintarContas(); recado('Conta apagada');
+      }, true);
+  });
+  $('f-cancelar').addEventListener('click', fecharFolha);
+  setTimeout(function(){ $('f-nome').focus(); }, 60);
+}
+function diasOpcoes(sel){
+  var s='';
+  for(var i=1;i<=31;i++) s+='<option value="'+i+'"'+(i===sel?' selected':'')+'>dia '+i+'</option>';
+  return s;
+}
+$('b-nova-conta').addEventListener('click', function(){ formConta(null); });
+
+/* ---------------- cópia de segurança ---------------- */
+$('b-copia').addEventListener('click', function(){
+  abrirFolha(
+    '<h3>💾 Cópia de segurança</h3>'+
+    '<p style="font-size:1.1rem">Tudo fica guardado só neste aparelho. Faça uma cópia de vez em quando para não perder nada se trocar de celular.</p>'+
+    '<button class="bt-grande verde" id="f-baixar">⬇️ Salvar uma cópia</button>'+
+    '<label for="f-arquivo" style="margin-top:1rem">Já tem uma cópia? Escolha o arquivo:</label>'+
+    '<input id="f-arquivo" type="file" accept="application/json,.json">'+
+    '<button class="bt-grande cinza" id="f-fechar">Fechar</button>'
+  );
+  $('f-baixar').addEventListener('click', function(){
+    try{
+      var texto=JSON.stringify(D,null,1);
+      var blob=new Blob([texto],{type:'application/json'});
+      var a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download='meu-dia-a-dia-'+chaveDia(hoje())+'.json';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
+      recado('Cópia salva nos seus downloads');
+    }catch(e){ recado('Não foi possível salvar a cópia aqui'); }
+  });
+  $('f-arquivo').addEventListener('change', function(ev){
+    var f=ev.target.files && ev.target.files[0]; if(!f) return;
+    var leitor=new FileReader();
+    leitor.onload=function(){
+      try{
+        var x=JSON.parse(leitor.result);
+        if(!x || typeof x!=='object' || !x.contas) throw 0;
+        fecharFolha();
+        perguntar('Trocar tudo pela cópia?','Os dados que estão no aparelho agora vão ser substituídos.',
+          'Sim, usar a cópia', function(){
+            D.contas=x.contas||[]; D.pagos=x.pagos||{}; D.tarefas=x.tarefas||[];
+            D.remedios=x.remedios||[]; D.tomados=x.tomados||{};
+            D.letra=x.letra||0; D.alarme=!!x.alarme;
+            guardar(); aplicarLetra(); textoBotaoAlarme();
+            pintarContas(); pintarTarefas(); pintarRemedios();
+            recado('Cópia carregada');
+          }, true);
+      }catch(e){ recado('Este arquivo não é uma cópia do app'); }
+    };
+    leitor.readAsText(f);
+  });
+  $('f-fechar').addEventListener('click', fecharFolha);
+});
+$('mes-ant').addEventListener('click', function(){ andarMes(-1); });
+$('mes-prox').addEventListener('click', function(){ andarMes(1); });
+function andarMes(n){
+  var p=mesAtual.split('-'), d=new Date(parseInt(p[0],10), parseInt(p[1],10)-1+n, 1);
+  mesAtual=chaveMes(d); pintarContas();
+}
+
+/* ================= TAREFAS ================= */
+function pintarTarefas(){
+  var abertas=D.tarefas.filter(function(t){ return !t.feita; });
+  var feitas =D.tarefas.filter(function(t){ return t.feita; });
+  var la=$('lista-tarefas'); la.innerHTML='';
+  if(!abertas.length){
+    la.innerHTML='<div class="vazio">Nenhuma tarefa para fazer.<br>Toque em <b>Nova tarefa</b>.</div>';
+  }
+  abertas.forEach(function(t){ la.appendChild(linhaTarefa(t)); });
+
+  var lf=$('lista-feitas'); lf.innerHTML='';
+  $('tt-feitas').style.display = feitas.length ? 'flex' : 'none';
+  feitas.forEach(function(t){ lf.appendChild(linhaTarefa(t)); });
+}
+function linhaTarefa(t){
+  var div=document.createElement('div');
+  div.className='item'+(t.feita?' ok':'');
+  var txt=document.createElement('div'); txt.className='txt';
+  txt.innerHTML='<div class="nome">'+escapar(t.texto)+'</div>'+
+    (t.data?'<div class="sub">Para '+ddmm(t.data)+'</div>':'');
+  div.appendChild(txt);
+
+  var bt=document.createElement('button');
+  bt.className='marca '+(t.feita?'sim':'nao');
+  bt.innerHTML=t.feita?'<span class="ic">✔</span>FEITA':'<span class="ic">◻</span>FAZER';
+  bt.setAttribute('aria-label',(t.feita?'Já feita: ':'Marcar como feita: ')+t.texto);
+  bt.addEventListener('click', function(){
+    t.feita=!t.feita; guardar(); pintarTarefas();
+    recado(t.feita?'✔ Tarefa feita':'Voltou para fazer');
+  });
+  div.appendChild(bt);
+
+  var ed=document.createElement('button');
+  ed.className='editar'; ed.innerHTML='✎<small>Alterar</small>';
+  ed.setAttribute('aria-label','Alterar a tarefa '+t.texto);
+  ed.addEventListener('click', function(){ formTarefa(t); });
+  div.appendChild(ed);
+  return div;
+}
+function formTarefa(t){
+  var novo=!t;
+  t=t||{id:idNovo(), texto:'', feita:false, data:''};
+  abrirFolha(
+    '<h3>'+(novo?'Nova tarefa':'Alterar tarefa')+'</h3>'+
+    '<label for="f-texto">O que precisa fazer</label>'+
+    '<input id="f-texto" type="text" value="'+escapar(t.texto)+'" placeholder="Ex.: Levar ao médico">'+
+    '<label for="f-data">Para que dia? (pode deixar vazio)</label>'+
+    '<input id="f-data" type="date" value="'+(t.data||'')+'">'+
+    '<button class="bt-grande verde" id="f-salvar">💾 Salvar</button>'+
+    (novo?'':'<button class="bt-grande vermelho" id="f-apagar">🗑️ Apagar</button>')+
+    '<button class="bt-grande cinza" id="f-cancelar">Cancelar</button>'
+  );
+  $('f-salvar').addEventListener('click', function(){
+    var v=$('f-texto').value.trim();
+    if(!v){ recado('Escreva o que precisa fazer'); $('f-texto').focus(); return; }
+    t.texto=v; t.data=$('f-data').value;
+    if(novo) D.tarefas.push(t);
+    guardar(); fecharFolha(); pintarTarefas();
+    recado(novo?'Tarefa criada':'Tarefa alterada');
+  });
+  if(!novo) $('f-apagar').addEventListener('click', function(){
+    fecharFolha();
+    perguntar('Apagar a tarefa?', escapar(t.texto), 'Sim, apagar', function(){
+      D.tarefas=D.tarefas.filter(function(x){ return x.id!==t.id; });
+      guardar(); pintarTarefas(); recado('Tarefa apagada');
+    }, true);
+  });
+  $('f-cancelar').addEventListener('click', fecharFolha);
+  setTimeout(function(){ $('f-texto').focus(); }, 60);
+}
+$('b-nova-tarefa').addEventListener('click', function(){ formTarefa(null); });
+
+/* ================= REMÉDIOS ================= */
+function dosesDeHoje(){
+  var lista=[];
+  D.remedios.forEach(function(r){
+    (r.horarios||[]).forEach(function(h){
+      lista.push({rem:r, hora:h, chave:r.id+'|'+h});
+    });
+  });
+  return lista.sort(function(a,b){ return a.hora.localeCompare(b.hora); });
+}
+function tomado(chave){
+  var d=D.tomados[chaveDia(hoje())]||{};
+  return !!d[chave];
+}
+function pintarRemedios(){
+  var dia=chaveDia(hoje());
+  var doses=dosesDeHoje();
+  var ld=$('lista-doses'); ld.innerHTML='';
+  if(!doses.length){
+    ld.innerHTML='<div class="vazio">Nenhum remédio cadastrado.<br>Toque em <b>Novo remédio</b>.</div>';
+  }
+  doses.forEach(function(d){
+    var ok=tomado(d.chave);
+    var div=document.createElement('div');
+    div.className='item dose'+(ok?' ok':'');
+    var topo=document.createElement('div'); topo.className='topo-dose';
+    var h=document.createElement('div'); h.className='hora'; h.textContent=d.hora;
+    topo.appendChild(h);
+    var txt=document.createElement('div'); txt.className='txt';
+    txt.innerHTML='<div class="nome">'+escapar(d.rem.nome)+'</div>'+
+                  (d.rem.dose?'<div class="sub">'+escapar(d.rem.dose)+'</div>':'');
+    topo.appendChild(txt);
+    div.appendChild(topo);
+    var bt=document.createElement('button');
+    bt.className='marca larga '+(ok?'sim':'nao');
+    bt.innerHTML=ok?'<span class="ic">✔</span>TOMEI':'<span class="ic">💊</span>TOMAR';
+    bt.setAttribute('aria-label',(ok?'Já tomou: ':'Marcar que tomou: ')+d.rem.nome+' das '+d.hora);
+    bt.addEventListener('click', function(){
+      if(!D.tomados[dia]) D.tomados[dia]={};
+      if(D.tomados[dia][d.chave]){
+        perguntar('Desmarcar?', 'Marcar que <b>ainda não tomou</b> '+escapar(d.rem.nome)+' das '+d.hora+'.',
+          'Sim, desmarcar', function(){
+            delete D.tomados[dia][d.chave]; guardar(); pintarRemedios(); recado('Desmarcado');
+          }, true);
+        return;
+      }
+      D.tomados[dia][d.chave]=true;
+      guardar(); pintarRemedios(); recado('✔ '+d.rem.nome+' tomado');
+    });
+    div.appendChild(bt);
+    ld.appendChild(div);
+  });
+
+  var lr=$('lista-remedios'); lr.innerHTML='';
+  D.remedios.forEach(function(r){
+    var div=document.createElement('div'); div.className='item';
+    var txt=document.createElement('div'); txt.className='txt';
+    txt.innerHTML='<div class="nome">'+escapar(r.nome)+'</div>'+
+      '<div class="sub">'+escapar(r.dose||'')+(r.horarios&&r.horarios.length?(' · '+r.horarios.join('  ')):' · sem horário')+'</div>';
+    div.appendChild(txt);
+    var ed=document.createElement('button'); ed.className='editar'; ed.innerHTML='✎<small>Alterar</small>';
+    ed.setAttribute('aria-label','Alterar o remédio '+r.nome);
+    ed.addEventListener('click', function(){ formRemedio(r); });
+    div.appendChild(ed);
+    lr.appendChild(div);
+  });
+  proximaDose();
+}
+function proximaDose(){
+  var agora=hoje(), hh=String(agora.getHours()).padStart(2,'0')+':'+String(agora.getMinutes()).padStart(2,'0');
+  var falta=dosesDeHoje().filter(function(d){ return !tomado(d.chave) && d.hora>=hh; });
+  var caixa=$('caixa-proximo');
+  if(!falta.length){
+    var atrasadas=dosesDeHoje().filter(function(d){ return !tomado(d.chave) && d.hora<hh; });
+    if(atrasadas.length){
+      caixa.style.display='block';
+      $('txt-proximo').textContent='⚠ Faltou tomar: '+atrasadas[0].rem.nome+' das '+atrasadas[0].hora;
+      return;
+    }
+    caixa.style.display = D.remedios.length ? 'block' : 'none';
+    $('txt-proximo').textContent='Tudo tomado por hoje! 👍';
+    return;
+  }
+  caixa.style.display='block';
+  $('txt-proximo').textContent=falta[0].hora+' — '+falta[0].rem.nome+(falta[0].rem.dose?' ('+falta[0].rem.dose+')':'');
+}
+
+function formRemedio(r){
+  var novo=!r;
+  r=r||{id:idNovo(), nome:'', dose:'', horarios:[]};
+  var horarios=(r.horarios||[]).slice();
+  abrirFolha(
+    '<h3>'+(novo?'Novo remédio':'Alterar remédio')+'</h3>'+
+    '<label for="f-nome">Nome do remédio</label>'+
+    '<input id="f-nome" type="text" value="'+escapar(r.nome)+'" placeholder="Ex.: Losartana">'+
+    '<label for="f-dose">Dose (pode deixar vazio)</label>'+
+    '<input id="f-dose" type="text" value="'+escapar(r.dose||'')+'" placeholder="Ex.: 1 comprimido de 50mg">'+
+    '<label for="f-hora">Horários de tomar</label>'+
+    '<div style="display:flex;gap:0.5rem;align-items:stretch">'+
+      '<input id="f-hora" type="time" style="flex:1" value="08:00">'+
+      '<button class="chip" id="f-add-hora" style="min-width:6rem">+ Incluir</button>'+
+    '</div>'+
+    '<div class="horarios" id="f-lista-horas"></div>'+
+    '<button class="bt-grande verde" id="f-salvar">💾 Salvar</button>'+
+    (novo?'':'<button class="bt-grande vermelho" id="f-apagar">🗑️ Apagar</button>')+
+    '<button class="bt-grande cinza" id="f-cancelar">Cancelar</button>'
+  );
+  function pintarHoras(){
+    var c=$('f-lista-horas'); c.innerHTML='';
+    if(!horarios.length){ c.innerHTML='<div class="sub" style="color:var(--fraca)">Nenhum horário incluído ainda.</div>'; return; }
+    horarios.slice().sort().forEach(function(h){
+      var b=document.createElement('button'); b.className='chip';
+      b.innerHTML=h+'<span class="x">✕</span>';
+      b.setAttribute('aria-label','Tirar o horário '+h);
+      b.addEventListener('click', function(){
+        horarios=horarios.filter(function(x){ return x!==h; }); pintarHoras();
+      });
+      c.appendChild(b);
+    });
+  }
+  pintarHoras();
+  $('f-add-hora').addEventListener('click', function(){
+    var h=$('f-hora').value;
+    if(!h){ recado('Escolha um horário'); return; }
+    if(horarios.indexOf(h)<0) horarios.push(h);
+    pintarHoras();
+  });
+  $('f-salvar').addEventListener('click', function(){
+    var nome=$('f-nome').value.trim();
+    if(!nome){ recado('Escreva o nome do remédio'); $('f-nome').focus(); return; }
+    r.nome=nome; r.dose=$('f-dose').value.trim(); r.horarios=horarios.slice().sort();
+    if(novo) D.remedios.push(r);
+    guardar(); fecharFolha(); pintarRemedios();
+    recado(novo?'Remédio criado':'Remédio alterado');
+  });
+  if(!novo) $('f-apagar').addEventListener('click', function(){
+    fecharFolha();
+    perguntar('Apagar o remédio?', escapar(r.nome), 'Sim, apagar', function(){
+      D.remedios=D.remedios.filter(function(x){ return x.id!==r.id; });
+      guardar(); pintarRemedios(); recado('Remédio apagado');
+    }, true);
+  });
+  $('f-cancelar').addEventListener('click', fecharFolha);
+  setTimeout(function(){ $('f-nome').focus(); }, 60);
+}
+$('b-novo-remedio').addEventListener('click', function(){ formRemedio(null); });
+
+/* ---------------- aviso na hora do remédio ---------------- */
+function textoBotaoAlarme(){
+  $('b-alarme').textContent = D.alarme ? '🔔 Aviso ligado (desligar)' : '🔔 Ligar o aviso na hora';
+}
+$('b-alarme').addEventListener('click', function(){
+  if(D.alarme){
+    D.alarme=false; guardar(); textoBotaoAlarme(); recado('Aviso desligado');
+    return;
+  }
+  var ligar=function(){ D.alarme=true; guardar(); textoBotaoAlarme(); recado('Aviso ligado'); };
+  abrirFolha(
+    '<h3>Aviso na hora do remédio</h3>'+
+    '<p style="font-size:1.1rem">O app avisa com som e mensagem quando chegar a hora, <b>enquanto ele estiver aberto no celular</b>.</p>'+
+    '<div class="aviso">Atenção: com o celular bloqueado ou o app fechado, o aviso pode não tocar. Para não esquecer de jeito nenhum, use também o despertador do celular.</div>'+
+    '<button class="bt-grande verde" id="f-sim">Ligar o aviso</button>'+
+    '<button class="bt-grande cinza" id="f-nao">Agora não</button>'
+  );
+  $('f-sim').addEventListener('click', function(){
+    fecharFolha();
+    try{
+      if('Notification' in window && Notification.permission==='default'){
+        Notification.requestPermission().then(function(){ ligar(); });
+        return;
+      }
+    }catch(e){}
+    ligar();
+  });
+  $('f-nao').addEventListener('click', fecharFolha);
+});
+
+var jaAvisado={};
+function tocarAviso(texto){
+  try{
+    var c=new (window.AudioContext||window.webkitAudioContext)();
+    [0,0.35,0.7].forEach(function(t){
+      var o=c.createOscillator(), g=c.createGain();
+      o.type='sine'; o.frequency.value=880;
+      g.gain.setValueAtTime(0.0001,c.currentTime+t);
+      g.gain.exponentialRampToValueAtTime(0.25,c.currentTime+t+0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+t+0.3);
+      o.connect(g); g.connect(c.destination);
+      o.start(c.currentTime+t); o.stop(c.currentTime+t+0.32);
+    });
+  }catch(e){}
+  try{
+    if('Notification' in window && Notification.permission==='granted')
+      new Notification('Hora do remédio', {body:texto});
+  }catch(e){}
+  recado('💊 '+texto);
+}
+setInterval(function(){
+  var agora=hoje();
+  var hh=String(agora.getHours()).padStart(2,'0')+':'+String(agora.getMinutes()).padStart(2,'0');
+  if($('aba-remedios').classList.contains('ativa')) proximaDose();
+  if(!D.alarme) return;
+  dosesDeHoje().forEach(function(d){
+    var marca=chaveDia(agora)+' '+d.chave;
+    if(d.hora===hh && !tomado(d.chave) && !jaAvisado[marca]){
+      jaAvisado[marca]=true;
+      tocarAviso(d.rem.nome+' das '+d.hora);
+    }
+  });
+}, 20000);
+
+/* ================= ABAS ================= */
+var TITULOS={contas:'Contas do mês', tarefas:'Minhas tarefas', remedios:'Meus remédios'};
+document.querySelectorAll('nav button').forEach(function(b){
+  b.addEventListener('click', function(){
+    var a=b.getAttribute('data-aba');
+    document.querySelectorAll('nav button').forEach(function(x){ x.classList.remove('ativa'); });
+    b.classList.add('ativa');
+    document.querySelectorAll('.aba').forEach(function(s){ s.classList.remove('ativa'); });
+    $('aba-'+a).classList.add('ativa');
+    $('titulo').textContent=TITULOS[a];
+    document.querySelector('main').scrollTop=0;
+    if(a==='contas') pintarContas();
+    if(a==='tarefas') pintarTarefas();
+    if(a==='remedios') pintarRemedios();
+  });
+});
+
+/* ---------------- instalar como aplicativo ---------------- */
+var promptInstalar=null;
+var jaInstalado=window.matchMedia('(display-mode: standalone)').matches || navigator.standalone===true;
+var eApple=/iPad|iPhone|iPod/.test(navigator.userAgent||'');
+window.addEventListener('beforeinstallprompt', function(e){
+  e.preventDefault(); promptInstalar=e;
+  if(!jaInstalado) $('b-instalar').style.display='flex';
+});
+window.addEventListener('appinstalled', function(){ promptInstalar=null; jaInstalado=true; $('b-instalar').style.display='none'; });
+if(eApple && !jaInstalado) $('b-instalar').style.display='flex';
+$('b-instalar').addEventListener('click', function(){
+  if(promptInstalar){ promptInstalar.prompt(); promptInstalar.userChoice.then(function(){ promptInstalar=null; }); return; }
+  abrirFolha(
+    '<h3>Colocar na tela do celular 📲</h3>'+
+    '<p style="font-size:1.15rem">'+(eApple
+      ? 'Toque no botão <b>Compartilhar</b> (o quadradinho com a seta) e escolha <b>Adicionar à Tela de Início</b>.'
+      : 'Abra o menu do navegador (os três pontinhos) e escolha <b>Instalar aplicativo</b>.')+'</p>'+
+    '<button class="bt-grande cinza" id="f-fechar2">Entendi</button>'
+  );
+  $('f-fechar2').addEventListener('click', fecharFolha);
+});
+
+/* ---------------- funciona sem internet ---------------- */
+if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  });
+}
+
+/* ---------------- começo ---------------- */
+carregar();
+mesAtual=chaveMes(hoje());
+(function(){
+  var d=hoje(), dias=['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+  $('hoje-txt').textContent='Hoje é '+dias[d.getDay()]+', '+d.getDate()+' de '+MESES[d.getMonth()];
+})();
+aplicarLetra(); textoBotaoAlarme();
+pintarContas(); pintarTarefas(); pintarRemedios();
+</script>
+</body>
+</html>
