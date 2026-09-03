@@ -121,6 +121,7 @@ main{flex:1 1 auto;overflow-y:auto;padding:0.8rem 0.8rem 1.4rem;
 .bt-grande.vermelho{background:var(--vermelho);}
 .bt-grande.contorno{background:var(--papel);color:var(--azul);border:3px solid var(--azul);}
 .bt-grande:active{filter:brightness(.92);}
+.versao{text-align:center;font-size:0.85rem;color:#6b7a99;margin:1rem 0 0.2rem;}
 .bt-grande.duplo{flex-direction:column;gap:0.15rem;line-height:1.25;padding:0.6rem 0.7rem;}
 .bt-grande small{font-size:0.85rem;font-weight:400;opacity:0.92;}
 
@@ -226,6 +227,7 @@ input:focus,select:focus{outline:3px solid var(--azul);border-color:var(--azul);
       <button class="bt-grande" id="b-nova-conta">➕ Nova conta</button>
       <button class="bt-grande contorno" id="b-copia" style="margin-top:1.2rem">💾 Cópia de segurança</button>
       <button class="bt-grande contorno" id="b-instalar" style="display:none">📲 Instalar no celular</button>
+      <div class="versao" id="versao-app"></div>
     </section>
 
     <!-- ============ TAREFAS ============ -->
@@ -268,6 +270,7 @@ input:focus,select:focus{outline:3px solid var(--azul);border-color:var(--azul);
    ========================================================== */
 
 var CHAVE='meu-dia-a-dia-v1';
+var VERSAO_APP='3';   /* subir junto com VERSAO do sw.js */
 
 /* contas iniciais, tiradas da lista do usuário (todas editáveis) */
 function contasIniciais(){
@@ -622,8 +625,21 @@ $('b-copia').addEventListener('click', function(){
     '<button class="bt-grande verde" id="f-baixar">⬇️ Salvar uma cópia</button>'+
     '<label for="f-arquivo" style="margin-top:1rem">Já tem uma cópia? Escolha o arquivo:</label>'+
     '<input id="f-arquivo" type="file" accept="application/json,.json">'+
+    '<button class="bt-grande contorno" id="f-atualizar" style="margin-top:1rem">🔄 Procurar versão nova do app</button>'+
     '<button class="bt-grande cinza" id="f-fechar">Fechar</button>'
   );
+  $('f-atualizar').addEventListener('click', function(){
+    recado('Procurando...');
+    if(!('serviceWorker' in navigator)){ setTimeout(function(){ location.reload(); }, 400); return; }
+    navigator.serviceWorker.getRegistration().then(function(reg){
+      if(!reg){ location.reload(); return; }
+      return reg.update().then(function(){
+        var novo = reg.installing || reg.waiting;
+        if(novo){ recado('Versão nova encontrada'); if(reg.waiting) reg.waiting.postMessage('pular-espera'); }
+        else { recado('Já está na versão mais nova'); setTimeout(function(){ location.reload(); }, 700); }
+      });
+    }).catch(function(){ location.reload(); });
+  });
   $('f-baixar').addEventListener('click', function(){
     try{
       var texto=JSON.stringify(D,null,1);
@@ -992,8 +1008,24 @@ $('b-instalar').addEventListener('click', function(){
 
 /* ---------------- funciona sem internet ---------------- */
 if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
+  /* Havia um service worker no comando quando esta página abriu? Se sim, a
+     troca de comando significa que chegou versão nova: recarrega UMA vez,
+     senão o app continua mostrando a tela antiga já desenhada. Na primeira
+     instalação não havia nenhum, e aí não se recarrega nada. */
+  var tinhaSW = !!navigator.serviceWorker.controller, jaRecarregou = false;
+  navigator.serviceWorker.addEventListener('controllerchange', function(){
+    if(!tinhaSW || jaRecarregou) return;
+    jaRecarregou = true;
+    location.reload();
+  });
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('sw.js').catch(function(){});
+    navigator.serviceWorker.register('sw.js').then(function(reg){
+      reg.update();
+      /* procura versão nova toda vez que o app volta para a tela */
+      document.addEventListener('visibilitychange', function(){
+        if(!document.hidden) reg.update();
+      });
+    }).catch(function(){});
   });
 }
 
@@ -1005,6 +1037,7 @@ if(mesAtual < MES_MIN) mesAtual = MES_MIN;
   var d=hoje(), dias=['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
   $('hoje-txt').textContent='Hoje é '+dias[d.getDay()]+', '+d.getDate()+' de '+MESES[d.getMonth()];
 })();
+$('versao-app').textContent = 'Meu Dia a Dia · versão '+VERSAO_APP;
 aplicarLetra(); textoBotaoAlarme();
 pintarContas(); pintarTarefas(); pintarRemedios();
 </script>
