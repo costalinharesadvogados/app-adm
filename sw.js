@@ -1,7 +1,7 @@
 /* Service worker do Meu Dia a Dia.
    Guarda o app no aparelho para funcionar sem internet.
    Ao publicar uma versão nova, troque o número em VERSAO. */
-var VERSAO = 'dia-v1';
+var VERSAO = 'dia-v2';
 var ARQUIVOS = [
   './','./index.html','./manifest.webmanifest',
   './icones/icone-192.png','./icones/icone-512.png',
