@@ -121,6 +121,8 @@ main{flex:1 1 auto;overflow-y:auto;padding:0.8rem 0.8rem 1.4rem;
 .bt-grande.vermelho{background:var(--vermelho);}
 .bt-grande.contorno{background:var(--papel);color:var(--azul);border:3px solid var(--azul);}
 .bt-grande:active{filter:brightness(.92);}
+.bt-grande.duplo{flex-direction:column;gap:0.15rem;line-height:1.25;padding:0.6rem 0.7rem;}
+.bt-grande small{font-size:0.85rem;font-weight:400;opacity:0.92;}
 
 /* ---------- títulos de seção ---------- */
 h2.sec{font-size:1.25rem;margin:1.2rem 0 0.6rem;display:flex;align-items:center;gap:0.4rem;}
@@ -285,6 +287,7 @@ var D = {
   letra:0, alarme:false
 };
 var mesAtual=null;   /* 'aaaa-mm' mostrado na tela */
+var MES_MIN='2026-01'; /* o app começa em janeiro de 2026 */
 
 /* ---------------- guardar e ler no aparelho ---------------- */
 function guardar(){
@@ -365,6 +368,11 @@ $('b-letra').addEventListener('click', function(){
 function contasDoMes(mes){
   return D.contas.filter(function(c){
     if(c.mes!==null && c.mes!==mes) return false;
+    if(mes < MES_MIN) return false;
+    /* apagada só a partir de certo mês: fica até c.fim (inclusive) */
+    if(c.fim && mes > c.fim) return false;
+    /* mês avulso apagado */
+    if(c.pulos && c.pulos.indexOf(mes)>=0) return false;
     /* conta encerrada só continua aparecendo nos meses em que já foi paga */
     if(c.encerrada && !pagamento(mes,c.id)) return false;
     return true;
@@ -385,6 +393,9 @@ function situacao(c, mes){
 }
 function pintarContas(){
   $('mes-nome').textContent = nomeMes(mesAtual);
+  var noInicio = (mesAtual<=MES_MIN);
+  $('mes-ant').disabled = noInicio;
+  $('mes-ant').style.opacity = noInicio ? '0.3' : '';
   var lista=$('lista-contas'); lista.innerHTML='';
   var itens=contasDoMes(mesAtual), falta=0, pago=0;
 
@@ -497,6 +508,8 @@ function formConta(c){
     '<input id="f-valor" type="text" inputmode="decimal" value="'+(c.valor?String(c.valor).replace('.',','):'')+'" placeholder="Ex.: 150,00">'+
     '<label for="f-dia">Dia do vencimento</label>'+
     '<select id="f-dia">'+diasOpcoes(c.dia)+'</select>'+
+    (novo||!(c.fim||(c.pulos&&c.pulos.length))?'':
+      '<button class="bt-grande contorno" id="f-restaurar" style="margin-bottom:0.6rem">↻ Voltar a cobrar todo mês</button>')+
     (novo?'':'<label for="f-encerrada">Esta conta ainda existe?</label>'+
       '<select id="f-encerrada">'+
         '<option value="sim"'+(c.encerrada?'':' selected')+'>Sim, continuar cobrando</option>'+
@@ -532,13 +545,11 @@ function formConta(c){
     recado(novo?'Conta criada':'Conta alterada');
   });
   if(!novo) $('f-apagar').addEventListener('click', function(){
-    fecharFolha();
-    perguntar('Apagar a conta?', 'A conta <b>'+escapar(c.nome)+'</b> vai sumir de todos os meses.',
-      'Sim, apagar', function(){
-        D.contas = D.contas.filter(function(x){ return x.id!==c.id; });
-        Object.keys(D.pagos).forEach(function(m){ delete D.pagos[m][c.id]; });
-        guardar(); pintarContas(); recado('Conta apagada');
-      }, true);
+    fecharFolha(); apagarConta(c);
+  });
+  if(!novo && $('f-restaurar')) $('f-restaurar').addEventListener('click', function(){
+    delete c.fim; c.pulos=[]; c.encerrada=false;
+    guardar(); fecharFolha(); pintarContas(); recado('Conta volta a aparecer todo mês');
   });
   $('f-cancelar').addEventListener('click', fecharFolha);
   setTimeout(function(){ $('f-nome').focus(); }, 60);
@@ -548,6 +559,59 @@ function diasOpcoes(sel){
   for(var i=1;i<=31;i++) s+='<option value="'+i+'"'+(i===sel?' selected':'')+'>dia '+i+'</option>';
   return s;
 }
+/* ---- apagar conta: só este mês, só os próximos, ou tudo ---- */
+function apagarSoEsteMes(c){
+  if(!c.pulos) c.pulos=[];
+  if(c.pulos.indexOf(mesAtual)<0) c.pulos.push(mesAtual);
+  if(D.pagos[mesAtual]) delete D.pagos[mesAtual][c.id];
+  guardar(); pintarContas(); recado('Apagada só em '+nomeMes(mesAtual));
+}
+function apagarDaqui(c){
+  c.fim = mesAtual;                 /* aparece até este mês; some nos seguintes */
+  c.pulos = (c.pulos||[]).filter(function(m){ return m<=mesAtual; });
+  guardar(); pintarContas(); recado('Apagada dos meses seguintes');
+}
+function apagarSempre(c){
+  D.contas = D.contas.filter(function(x){ return x.id!==c.id; });
+  Object.keys(D.pagos).forEach(function(m){ delete D.pagos[m][c.id]; });
+  guardar(); pintarContas(); recado('Conta apagada de todos os meses');
+}
+function apagarConta(c){
+  /* conta criada só para um mês: não há passado nem futuro a preservar */
+  if(c.mes!==null){
+    perguntar('Apagar a conta?','A conta <b>'+escapar(c.nome)+'</b> existe só em '+nomeMes(mesAtual)+'.',
+      'Sim, apagar', function(){ apagarSempre(c); }, true);
+    return;
+  }
+  abrirFolha(
+    '<h3>🗑️ Apagar '+escapar(c.nome)+'</h3>'+
+    '<p style="font-size:1.15rem;margin:0 0 0.5rem">Esta conta se repete todo mês. O que você quer apagar?</p>'+
+    '<button class="bt-grande vermelho duplo" id="a-mes">Só a de '+nomeMes(mesAtual)+
+      '<small>os outros meses continuam</small></button>'+
+    '<button class="bt-grande vermelho duplo" id="a-frente">Só as dos próximos meses'+
+      '<small>'+nomeMes(mesAtual)+' e o histórico ficam</small></button>'+
+    '<button class="bt-grande vermelho duplo" id="a-tudo">Todas, passadas e futuras'+
+      '<small>apaga também o histórico de pagamentos</small></button>'+
+    '<button class="bt-grande cinza" id="a-nao">Não apagar nada</button>'
+  );
+  $('a-mes').addEventListener('click', function(){
+    fecharFolha();
+    perguntar('Apagar só este mês?','<b>'+escapar(c.nome)+'</b> some de '+nomeMes(mesAtual)+
+      ' e continua nos demais meses.','Sim, apagar só este mês', function(){ apagarSoEsteMes(c); }, true);
+  });
+  $('a-frente').addEventListener('click', function(){
+    fecharFolha();
+    perguntar('Apagar dos próximos meses?','<b>'+escapar(c.nome)+'</b> aparece até '+nomeMes(mesAtual)+
+      ' e não volta nos meses seguintes.','Sim, apagar dali em diante', function(){ apagarDaqui(c); }, true);
+  });
+  $('a-tudo').addEventListener('click', function(){
+    fecharFolha();
+    perguntar('Apagar de todos os meses?','<b>'+escapar(c.nome)+'</b> some de todos os meses, inclusive dos '+
+      'que já foram pagos.','Sim, apagar tudo', function(){ apagarSempre(c); }, true);
+  });
+  $('a-nao').addEventListener('click', fecharFolha);
+}
+
 $('b-nova-conta').addEventListener('click', function(){ formConta(null); });
 
 /* ---------------- cópia de segurança ---------------- */
@@ -599,7 +663,9 @@ $('mes-ant').addEventListener('click', function(){ andarMes(-1); });
 $('mes-prox').addEventListener('click', function(){ andarMes(1); });
 function andarMes(n){
   var p=mesAtual.split('-'), d=new Date(parseInt(p[0],10), parseInt(p[1],10)-1+n, 1);
-  mesAtual=chaveMes(d); pintarContas();
+  var alvo=chaveMes(d);
+  if(alvo < MES_MIN){ recado('O app começa em '+nomeMes(MES_MIN)); return; }
+  mesAtual=alvo; pintarContas();
 }
 
 /* ================= TAREFAS ================= */
@@ -934,6 +1000,7 @@ if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
 /* ---------------- começo ---------------- */
 carregar();
 mesAtual=chaveMes(hoje());
+if(mesAtual < MES_MIN) mesAtual = MES_MIN;
 (function(){
   var d=hoje(), dias=['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
   $('hoje-txt').textContent='Hoje é '+dias[d.getDay()]+', '+d.getDate()+' de '+MESES[d.getMonth()];
